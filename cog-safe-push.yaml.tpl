@@ -1,4 +1,4 @@
-model: ostris/flux-dev-lora-trainer
+model: sitatec/hyper-flux-fine-tuner
 test_model: replicate-internal/test-flux-fine-tuner
 predict:
   compare_outputs: false
