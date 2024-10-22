@@ -27,13 +27,11 @@ from weights import WeightsDownloadCache
 from lora_loading_patch import load_lora_into_transformer
 
 MODEL_URL_DEV = (
-    "https://weights.replicate.delivery/default/black-forest-labs/FLUX.1-dev/files.tar"
+    "https://weights.replicate.delivery/default/ByteDance/Hyper-FLUX.1-dev-8steps/model.tar"
 )
-MODEL_URL_SCHNELL = "https://weights.replicate.delivery/default/black-forest-labs/FLUX.1-schnell/slim.tar"
 SAFETY_URL = "https://weights.replicate.delivery/default/sdxl/safety-1.0.tar"
 SAFETY_CACHE_PATH = Path("safety-cache")
-FLUX_DEV_PATH = Path("FLUX.1-dev")
-FLUX_SCHNELL_PATH = Path("FLUX.1-schnell")
+FLUX_DEV_PATH = Path("Hyper-FLUX.1-dev-8steps")
 FEATURE_EXTRACTOR = Path("/src/feature-extractor")
 
 FALCON_MODEL_NAME = "Falconsai/nsfw_image_detection"
@@ -83,7 +81,8 @@ class Predictor(BasePredictor):
             SAFETY_CACHE_PATH, torch_dtype=torch.float16
         ).to("cuda")  # pyright: ignore
         self.feature_extractor = cast(
-            CLIPImageProcessor, CLIPImageProcessor.from_pretrained(FEATURE_EXTRACTOR)
+            CLIPImageProcessor, CLIPImageProcessor.from_pretrained(
+                FEATURE_EXTRACTOR)
         )
 
         print("Loading Falcon safety checker...")
@@ -93,35 +92,22 @@ class Predictor(BasePredictor):
             FALCON_MODEL_NAME,
             cache_dir=FALCON_MODEL_CACHE,
         )
-        self.falcon_processor = ViTImageProcessor.from_pretrained(FALCON_MODEL_NAME)
+        self.falcon_processor = ViTImageProcessor.from_pretrained(
+            FALCON_MODEL_NAME)
 
         print("Loading Flux dev pipeline")
         if not FLUX_DEV_PATH.exists():
             download_base_weights(MODEL_URL_DEV, Path("."))
         dev_pipe = FluxPipeline.from_pretrained(
-            "FLUX.1-dev",
+            str(FLUX_DEV_PATH),
             torch_dtype=torch.bfloat16,
         ).to("cuda")
         dev_pipe.__class__.load_lora_into_transformer = classmethod(
             load_lora_into_transformer
         )
 
-        print("Loading Flux schnell pipeline")
-        if not FLUX_SCHNELL_PATH.exists():
-            download_base_weights(MODEL_URL_SCHNELL, FLUX_SCHNELL_PATH)
-        schnell_pipe = FluxPipeline.from_pretrained(
-            "FLUX.1-schnell",
-            vae=dev_pipe.vae,
-            text_encoder=dev_pipe.text_encoder,
-            text_encoder_2=dev_pipe.text_encoder_2,
-            tokenizer=dev_pipe.tokenizer,
-            tokenizer_2=dev_pipe.tokenizer_2,
-            torch_dtype=torch.bfloat16,
-        ).to("cuda")
-
         self.pipes = {
             "dev": dev_pipe,
-            "schnell": schnell_pipe,
         }
 
         # Load img2img pipelines
@@ -139,22 +125,6 @@ class Predictor(BasePredictor):
             load_lora_into_transformer
         )
 
-        print("Loading Flux schnell img2img pipeline")
-        schnell_img2img_pipe = FluxImg2ImgPipeline(
-            transformer=schnell_pipe.transformer,
-            scheduler=schnell_pipe.scheduler,
-            vae=schnell_pipe.vae,
-            text_encoder=schnell_pipe.text_encoder,
-            text_encoder_2=schnell_pipe.text_encoder_2,
-            tokenizer=schnell_pipe.tokenizer,
-            tokenizer_2=schnell_pipe.tokenizer_2,
-        ).to("cuda")
-
-        self.img2img_pipes = {
-            "dev": dev_img2img_pipe,
-            "schnell": schnell_img2img_pipe,
-        }
-
         # Load inpainting pipelines
         print("Loading Flux dev inpaint pipeline")
         dev_inpaint_pipe = FluxInpaintPipeline(
@@ -170,25 +140,12 @@ class Predictor(BasePredictor):
             load_lora_into_transformer
         )
 
-        print("Loading Flux schnell inpaint pipeline")
-        schnell_inpaint_pipe = FluxInpaintPipeline(
-            transformer=schnell_pipe.transformer,
-            scheduler=schnell_pipe.scheduler,
-            vae=schnell_pipe.vae,
-            text_encoder=schnell_pipe.text_encoder,
-            text_encoder_2=schnell_pipe.text_encoder_2,
-            tokenizer=schnell_pipe.tokenizer,
-            tokenizer_2=schnell_pipe.tokenizer_2,
-        ).to("cuda")
-
         self.inpaint_pipes = {
             "dev": dev_inpaint_pipe,
-            "schnell": schnell_inpaint_pipe,
         }
 
         self.loaded_lora_urls = {
             "dev": LoadedLoRAs(main=None, extra=None),
-            "schnell": LoadedLoRAs(main=None, extra=None),
         }
         print("setup took: ", time.time() - start)
 
@@ -239,11 +196,11 @@ class Predictor(BasePredictor):
             description="Number of inference steps. More steps can give more detailed images, but take longer.",
             ge=1,
             le=50,
-            default=28,
+            default=8,
         ),
         model: str = Input(
-            description="Which model to run inferences with. The dev model needs around 28 steps but the schnell model only needs around 4 steps.",
-            choices=["dev", "schnell"],
+            description="Which model to run inferences with.",
+            choices=["dev"],
             default="dev",
         ),
         guidance_scale: float = Input(
@@ -323,7 +280,8 @@ class Predictor(BasePredictor):
             target_size = (target_width, target_height)
 
             print(
-                f"[!] Resizing input image from {original_width}x{original_height} to {target_width}x{target_height}"
+                f"[!] Resizing input image from {original_width}x{
+                    original_height} to {target_width}x{target_height}"
             )
 
             # Determine if we should use highest quality settings
@@ -349,7 +307,8 @@ class Predictor(BasePredictor):
 
             flux_kwargs["strength"] = prompt_strength
             print(
-                f"[!] Using {model} model for {'img2img' if is_img2img_mode else 'inpainting'}"
+                f"[!] Using {model} model for {
+                    'img2img' if is_img2img_mode else 'inpainting'}"
             )
         else:  # is_txt2img_mode
             print("[!] txt2img mode")
@@ -360,14 +319,12 @@ class Predictor(BasePredictor):
         if replicate_weights:
             flux_kwargs["joint_attention_kwargs"] = {"scale": lora_scale}
 
-        assert model in ["dev", "schnell"]
+        assert model in ["dev"]
         if model == "dev":
             print("Using dev model")
             max_sequence_length = 512
-        else:  # model == "schnell":
-            print("Using schnell model")
-            max_sequence_length = 256
-            guidance_scale = 0
+        else:
+            raise ValueError(f"Unknown model: {model}")
 
         if replicate_weights:
             start_time = time.time()
