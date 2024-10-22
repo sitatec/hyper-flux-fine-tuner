@@ -31,8 +31,8 @@ from wandb_client import WeightsAndBiasesClient, logout_wandb
 from layer_match import match_layers_to_optimize, available_layers_to_optimize
 
 
-JOB_NAME = "flux_train_replicate"
-WEIGHTS_PATH = Path("./FLUX.1-dev")
+JOB_NAME = "hyper_flux_train_replicate"
+WEIGHTS_PATH = Path("./Hyper-FLUX.1-dev-8steps")
 INPUT_DIR = Path("input_images")
 OUTPUT_DIR = Path("output")
 JOB_DIR = OUTPUT_DIR / JOB_NAME
@@ -130,6 +130,11 @@ def train(
     learning_rate: float = Input(
         description="Learning rate, if you’re new to training you probably don’t need to change this.",
         default=4e-4,
+    ),
+    content_or_style: str = Input(
+        description="Whether you are training the model on content or style. Choose `balanced` if you are not sure.",
+        choices=["content", "style", "balanced"],
+        default="balanced",
     ),
     batch_size: int = Input(
         description="Batch size, you can leave this as 1", default=1
@@ -271,7 +276,7 @@ def train(
                             "gradient_accumulation_steps": 1,
                             "train_unet": True,
                             "train_text_encoder": False,
-                            "content_or_style": "balanced",
+                            "content_or_style": content_or_style,
                             "gradient_checkpointing": True,
                             "noise_scheduler": "flowmatch",
                             "optimizer": optimizer,
@@ -298,7 +303,7 @@ def train(
                             "seed": 42,
                             "walk_seed": True,
                             "guidance_scale": 3.5,
-                            "sample_steps": 28,
+                            "sample_steps": 8,
                         },
                     }
                 ],
@@ -484,7 +489,7 @@ def download_huggingface_lora(hf_lora_url: str, output_path: str):
             "Invalid URL. Use a HuggingFace download URL like https://huggingface.co/fofr/flux-80s-cyberpunk/resolve/main/lora.safetensors"
         )
 
-    lora_path = OUTPUT_DIR / "flux_train_replicate" / "lora.safetensors"
+    lora_path = OUTPUT_DIR / JOB_NAME / "lora.safetensors"
     print(f"Downloading {hf_lora_url} to {lora_path}")
     subprocess.check_output(
         [
@@ -504,7 +509,7 @@ def download_weights():
             [
                 "pget",
                 "-xf",
-                "https://weights.replicate.delivery/default/black-forest-labs/FLUX.1-dev/files.tar",
+                "https://weights.replicate.delivery/default/ByteDance/Hyper-FLUX.1-dev-8steps/model.tar",
                 str(WEIGHTS_PATH.parent),
             ]
         )
