@@ -32,7 +32,7 @@ from layer_match import match_layers_to_optimize, available_layers_to_optimize
 
 
 JOB_NAME = "hyper_flux_train_replicate"
-WEIGHTS_PATH = Path("./Hyper-FLUX.1-dev-8steps")
+WEIGHTS_PATH = Path("Hyper-FLUX.1-dev-8steps")
 INPUT_DIR = Path("input_images")
 OUTPUT_DIR = Path("output")
 JOB_DIR = OUTPUT_DIR / JOB_NAME
@@ -510,7 +510,7 @@ def download_weights():
                 "pget",
                 "-xf",
                 "https://weights.replicate.delivery/default/ByteDance/Hyper-FLUX.1-dev-8steps/model.tar",
-                str(WEIGHTS_PATH.parent),
+                str(WEIGHTS_PATH),
             ]
         )
         t2 = time.time()

@@ -97,7 +97,7 @@ class Predictor(BasePredictor):
 
         print("Loading Flux dev pipeline")
         if not FLUX_DEV_PATH.exists():
-            download_base_weights(MODEL_URL_DEV, Path("."))
+            download_base_weights(MODEL_URL_DEV, FLUX_DEV_PATH)
         dev_pipe = FluxPipeline.from_pretrained(
             str(FLUX_DEV_PATH),
             torch_dtype=torch.bfloat16,
@@ -280,8 +280,7 @@ class Predictor(BasePredictor):
             target_size = (target_width, target_height)
 
             print(
-                f"[!] Resizing input image from {original_width}x{
-                    original_height} to {target_width}x{target_height}"
+                f"[!] Resizing input image from {original_width}x{original_height} to {target_width}x{target_height}"
             )
 
             # Determine if we should use highest quality settings
@@ -307,8 +306,7 @@ class Predictor(BasePredictor):
 
             flux_kwargs["strength"] = prompt_strength
             print(
-                f"[!] Using {model} model for {
-                    'img2img' if is_img2img_mode else 'inpainting'}"
+                f"[!] Using {model} model for {'img2img' if is_img2img_mode else 'inpainting'}"
             )
         else:  # is_txt2img_mode
             print("[!] txt2img mode")

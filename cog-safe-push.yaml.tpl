@@ -69,18 +69,6 @@ predict:
         replicate_weights: https://replicate.delivery/yhqm/MHJmIF7zlLKXPNN9LKN5yxYUuC7SyzKjMBtqeVwUGdPCpqqJA/trained_model.tar
       match_url: https://storage.googleapis.com/replicate-test-flux-finer-tuner/test-outputs/aspect-ratio.jpg
 
-    # schnell
-    - inputs:
-        prompt: PLSM style, an image of a tiger, made of yellow, red, and purple goo plasma
-        num_outputs: 1
-        lora_scale: 1.1
-        num_inference_steps: 4
-        model: schnell
-        guidance_scale: 1.5
-        seed: 16726
-        output_format: jpg
-        replicate_weights: https://replicate.delivery/yhqm/MHJmIF7zlLKXPNN9LKN5yxYUuC7SyzKjMBtqeVwUGdPCpqqJA/trained_model.tar
-      match_url: https://replicate.delivery/yhqm/rQhMIg6dhLYVJ5gXWfZI4Ik1DF9cGV7pm8UN0DKmpWDfJGhTA/out-0.jpg
 
     # extra lora
     - inputs:
