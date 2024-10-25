@@ -124,7 +124,11 @@ class Predictor(BasePredictor):
         dev_img2img_pipe.__class__.load_lora_into_transformer = classmethod(
             load_lora_into_transformer
         )
-
+        
+        self.img2img_pipes = {
+            "dev": dev_img2img_pipe,
+        }
+        
         # Load inpainting pipelines
         print("Loading Flux dev inpaint pipeline")
         dev_inpaint_pipe = FluxInpaintPipeline(
